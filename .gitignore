@@ -1,0 +1,17 @@
+# Sistem dosyaları
+.DS_Store
+Thumbs.db
+
+# Geçici dosyalar
+*.log
+*.tmp
+*.bak
+*.sql~
+
+# Editor / IDE klasörleri
+.vscode/
+.idea/
+
+# Gereksiz yedek klasörler
+node_modules/
+vendor/
