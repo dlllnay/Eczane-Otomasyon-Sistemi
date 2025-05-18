@@ -402,7 +402,91 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 DROP TABLE IF EXISTS `vw_ilacfiyatkarsilastirma`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_ilacfiyatkarsilastirma`  AS SELECT `i`.`Urun_Ad` AS `Urun_Ad`, `ri`.`NormalFiyat` AS `NormalFiyat`, `ri`.`IndirimliFiyat` AS `IndirimliFiyat`, `h`.`SigortaTuru` AS `SigortaTuru`, if(`ri`.`Recete_ID` is null,'Reçetesiz Satış','Reçeteli Satış') AS `Satis_Tipi` FROM (((`receteli_ilac` `ri` join `ilac` `i` on(`ri`.`Ilac_ID` = `i`.`Ilac_ID`)) left join `recete_hasta` `rh` on(`ri`.`Recete_ID` = `rh`.`Recete_ID`)) left join `hasta` `h` on(`rh`.`Hasta_ID` = `h`.`Hasta_ID`)) ;
+--
+--
+--
+--  --------------------------------------------------------
 
+--
+-- Stok Azalınca Uyarı Gösteren Trigger
+DELIMITER //
+
+CREATE TRIGGER trg_stok_uyarisi
+AFTER UPDATE ON stok
+FOR EACH ROW
+BEGIN
+  IF NEW.Adet < 10 THEN
+    INSERT INTO uyarilog (Mesaj, Tarih)
+    VALUES (
+      CONCAT((SELECT Urun_Ad FROM ilac WHERE Ilac_ID = NEW.Ilac_ID), ' stoğu azaldı. Lütfen sipariş verin.'),
+      NOW()
+    );
+  END IF;
+END;
+//
+
+DELIMITER ;
+--
+--  ---------------------------------------------------------
+
+--
+--
+--2. Satış Fiyatı Sistemi için (Reçete + Sigorta Kontrolü)
+DELIMITER //
+
+CREATE TRIGGER trg_fiyat_belirle
+BEFORE INSERT ON receteli_ilac
+FOR EACH ROW
+BEGIN
+  DECLARE sigortaTuru VARCHAR(50);
+  
+  SELECT h.SigortaTuru INTO sigortaTuru
+  FROM recete r
+  JOIN hasta h ON r.Hasta_ID = h.Hasta_ID
+  WHERE r.Recete_ID = NEW.Recete_ID;
+
+  IF NEW.Recete_ID IS NOT NULL AND sigortaTuru = 'SGK' THEN
+    SET NEW.IndirimliFiyat = NEW.NormalFiyat * 0.20;
+    SET NEW.SatisFiyati = NEW.NormalFiyat * 0.20;
+    SET NEW.SigortaKarsilamaOrani = 0.80;
+    
+  ELSEIF NEW.Recete_ID IS NOT NULL AND sigortaTuru = 'Özel' THEN
+    SET NEW.IndirimliFiyat = NEW.NormalFiyat * 0.50;
+    SET NEW.SatisFiyati = NEW.NormalFiyat * 0.50;
+    SET NEW.SigortaKarsilamaOrani = 0.50;
+
+  ELSE
+    SET NEW.IndirimliFiyat = NEW.NormalFiyat;
+    SET NEW.SatisFiyati = NEW.NormalFiyat;
+    SET NEW.SigortaKarsilamaOrani = 0.00;
+  END IF;
+END;
+//
+
+DELIMITER ;
+--
+--   ---------------------------------------------------------------
+--
+--
+--
+--3. Personel Loglama Trigger’ı
+--Yeni personel eklendiğinde otomatik olarak personellog tablosuna log kaydı düşer
+DELIMITER //
+
+CREATE TRIGGER trg_personel_ekleme
+AFTER INSERT ON personel
+FOR EACH ROW
+BEGIN
+  INSERT INTO personellog (Personel_ID, Tarih)
+  VALUES (NEW.Personel_ID, NOW());
+END;
+//
+
+DELIMITER ;
+
+
+-------------------------------------------------------------------------------------
+--
 --
 -- Dökümü yapılmış tablolar için indeksler
 --
