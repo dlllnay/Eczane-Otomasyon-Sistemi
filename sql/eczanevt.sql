@@ -367,44 +367,6 @@ CREATE TABLE `vw_gunluksatisozeti` (
 ,`ToplamTutar` decimal(32,2)
 );
 
--- --------------------------------------------------------
-
---
--- Görünüm yapısı durumu `vw_ilacfiyatkarsilastirma`
--- (Asıl görünüm için aşağıya bakın)
---
-CREATE TABLE `vw_ilacfiyatkarsilastirma` (
-);
-
--- --------------------------------------------------------
-
---
--- Görünüm yapısı `vw_azalanstok`
---
-DROP TABLE IF EXISTS `vw_azalanstok`;
-
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_azalanstok`  AS SELECT `s`.`Stok_ID` AS `Stok_ID`, `i`.`Urun_Ad` AS `Urun_Ad`, `s`.`Adet` AS `Adet` FROM (`stok` `s` join `ilac` `i` on(`s`.`Ilac_ID` = `i`.`Ilac_ID`)) WHERE `s`.`Adet` < 10 ;
-
--- --------------------------------------------------------
-
---
--- Görünüm yapısı `vw_gunluksatisozeti`
---
-DROP TABLE IF EXISTS `vw_gunluksatisozeti`;
-
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_gunluksatisozeti`  AS SELECT `r`.`Tarih` AS `Tarih`, count(`ri`.`Ilac_ID`) AS `ToplamIlacAdedi`, sum(`ri`.`SatisFiyati`) AS `ToplamTutar` FROM (`recete` `r` join `receteli_ilac` `ri` on(`r`.`Recete_ID` = `ri`.`Recete_ID`)) GROUP BY `r`.`Tarih` ;
-
--- --------------------------------------------------------
-
---
--- Görünüm yapısı `vw_ilacfiyatkarsilastirma`
---
-DROP TABLE IF EXISTS `vw_ilacfiyatkarsilastirma`;
-
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_ilacfiyatkarsilastirma`  AS SELECT `i`.`Urun_Ad` AS `Urun_Ad`, `ri`.`NormalFiyat` AS `NormalFiyat`, `ri`.`IndirimliFiyat` AS `IndirimliFiyat`, `h`.`SigortaTuru` AS `SigortaTuru`, if(`ri`.`Recete_ID` is null,'Reçetesiz Satış','Reçeteli Satış') AS `Satis_Tipi` FROM (((`receteli_ilac` `ri` join `ilac` `i` on(`ri`.`Ilac_ID` = `i`.`Ilac_ID`)) left join `recete_hasta` `rh` on(`ri`.`Recete_ID` = `rh`.`Recete_ID`)) left join `hasta` `h` on(`rh`.`Hasta_ID` = `h`.`Hasta_ID`)) ;
---
---
---
 --  --------------------------------------------------------
 
 --
